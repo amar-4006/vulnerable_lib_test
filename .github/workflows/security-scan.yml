@@ -46,7 +46,7 @@ jobs:
               "name": "curl",
               "version=": "7.71.1"
             }
-          ],
+          ]
           
         }
         EOF
