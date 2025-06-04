@@ -40,14 +40,14 @@ jobs:
           "dependencies": [
             {
               "name": "libxml2",
-              "version>=": "2.9.0"
+              "version=": "2.9.0"
             },
             {
               "name": "curl",
-              "version>=": "7.71.1"
+              "version=": "7.71.1"
             }
           ],
-          "builtin-baseline": "ca846b21276c9a3171074ac8d2b4f6516894a7d0"
+          
         }
         EOF
 
