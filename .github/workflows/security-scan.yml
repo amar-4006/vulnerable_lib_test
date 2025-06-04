@@ -25,9 +25,12 @@ jobs:
         submodules: recursive
 
     - name: Setup vcpkg
-      uses: microsoft/setup-vcpkg@v2
-      with:
-        vcpkg-version: '2023.11.20'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        ./bootstrap-vcpkg.sh
+        echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> $GITHUB_ENV
+
 
     - name: Create vcpkg.json for vulnerable versions
       run: |
