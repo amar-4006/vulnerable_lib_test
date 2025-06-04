@@ -1,0 +1,119 @@
+name: Security Scan with Trivy
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 2 * * 1'  # Weekly scan on Mondays at 2 AM
+
+jobs:
+  security-scan:
+    name: Security Vulnerability Scan
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Setup vcpkg
+      uses: microsoft/setup-vcpkg@v1
+      with:
+        vcpkg-version: '2023.11.20'
+
+    - name: Create vcpkg.json for vulnerable versions
+      run: |
+        cat > vcpkg.json << 'EOF'
+        {
+          "name": "vulnerable-lib-test",
+          "version": "1.0.0",
+          "dependencies": [
+            {
+              "name": "libxml2",
+              "version>=": "2.9.0"
+            },
+            {
+              "name": "curl",
+              "version>=": "7.70.0"
+            }
+          ],
+          "builtin-baseline": "2023.04.15"
+        }
+        EOF
+
+    - name: Install dependencies with vcpkg
+      run: |
+        vcpkg install --triplet=x64-linux
+
+    - name: Build project
+      run: |
+        mkdir build
+        cd build
+        cmake .. -DCMAKE_BUILD_TYPE=Release \
+                 -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake
+        make -j$(nproc)
+
+    - name: Install Trivy
+      run: |
+        sudo apt-get update
+        sudo apt-get install wget apt-transport-https gnupg lsb-release
+        wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+        echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee -a /etc/apt/sources.list.d/trivy.list
+        sudo apt-get update
+        sudo apt-get install trivy
+
+    - name: Generate SBOM with Trivy
+      run: |
+        trivy fs --format spdx-json --output sbom.spdx.json .
+        trivy fs --format cyclonedx --output sbom.cyclonedx.json .
+
+    - name: Run Trivy vulnerability scan
+      run: |
+        trivy fs --format sarif --output trivy-results.sarif .
+        trivy fs --format table --output trivy-results.txt .
+
+    - name: Upload SARIF to GitHub Security tab
+      uses: github/codeql-action/upload-sarif@v3
+      if: always()
+      with:
+        sarif_file: trivy-results.sarif
+        category: trivy-vulnerability-scan
+
+    - name: Upload SBOM artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: sbom-reports
+        path: |
+          sbom.spdx.json
+          sbom.cyclonedx.json
+
+    - name: Upload Trivy scan results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: trivy-scan-results
+        path: |
+          trivy-results.sarif
+          trivy-results.txt
+
+    - name: Display vulnerability summary
+      if: always()
+      run: |
+        echo "## Vulnerability Scan Summary" >> $GITHUB_STEP_SUMMARY
+        echo "### Installed Packages:" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        vcpkg list >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "### Vulnerability Report:" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        head -50 trivy-results.txt >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
