@@ -25,7 +25,7 @@ jobs:
         submodules: recursive
 
     - name: Setup vcpkg
-      uses: microsoft/setup-vcpkg@v1
+      uses: microsoft/setup-vcpkg@v2
       with:
         vcpkg-version: '2023.11.20'
 
