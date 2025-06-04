@@ -1,4 +1,4 @@
-name: Security Scan with Triv
+name: Security Scan with Trivy
 
 on:
   push:
@@ -26,11 +26,10 @@ jobs:
 
     - name: Setup vcpkg
       run: |
-        git clone https://github.com/Microsoft/vcpkg.git
+        git clone https://github.com/Microsoft/vcpkg.git vcpkg
         cd vcpkg
         ./bootstrap-vcpkg.sh
         echo "VCPKG_ROOT=${{ github.workspace }}/vcpkg" >> $GITHUB_ENV
-
 
     - name: Create vcpkg.json for vulnerable versions
       run: |
@@ -48,13 +47,13 @@ jobs:
               "version>=": "7.70.0"
             }
           ],
-          "builtin-baseline": "2023.04.15"
+          "builtin-baseline": "ca846b21276c9a3171074ac8d2b4f6516894a7d0"
         }
         EOF
 
     - name: Install dependencies with vcpkg
       run: |
-        vcpkg install --triplet=x64-linux
+        $VCPKG_ROOT/vcpkg install --triplet=x64-linux --vcpkg-root=$VCPKG_ROOT
 
     - name: Build project
       run: |
@@ -114,7 +113,7 @@ jobs:
         echo "## Vulnerability Scan Summary" >> $GITHUB_STEP_SUMMARY
         echo "### Installed Packages:" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        vcpkg list >> $GITHUB_STEP_SUMMARY
+        $VCPKG_ROOT/vcpkg list >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
         echo "### Vulnerability Report:" >> $GITHUB_STEP_SUMMARY
         echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
