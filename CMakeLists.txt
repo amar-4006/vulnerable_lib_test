@@ -26,4 +26,4 @@ get_target_property(LIBXML2_VERSION LibXml2::LibXml2 VERSION)
 get_target_property(CURL_VERSION CURL::libcurl VERSION)
 
 message(STATUS "LibXml2 target found")
-message(STATUS "CURL target found")
+message(STATUS "CURL target found here")
